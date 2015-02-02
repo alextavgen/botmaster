@@ -1,0 +1,14 @@
+[robot]
+
+; Robot name
+robot_name = palmer
+
+; Using devices
+video_device = /dev/video0
+serial_device = /dev/ttyS1
+
+; Video settings...
+brightness = 100
+contrast = 100
+;topCut = 20 ;kitsas nurk
+topCut = 170 ; lainurk

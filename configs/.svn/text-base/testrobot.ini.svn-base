@@ -1,0 +1,14 @@
+[robot]
+
+; Robot name
+robot_name = testrobot
+
+; Using devices
+video_device = /dev/video0
+serial_device = /dev/ttyUSB0
+
+; Video settings
+brightness = 100
+contrast = 100
+topCut = 0
+

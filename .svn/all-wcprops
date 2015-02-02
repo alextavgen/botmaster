@@ -1,0 +1,233 @@
+K 25
+svn:wc:ra_dav:version-url
+V 39
+/svn/!svn/ver/1124/vision/botmaster2012
+END
+ov534.c
+K 25
+svn:wc:ra_dav:version-url
+V 47
+/svn/!svn/ver/1044/vision/botmaster2012/ov534.c
+END
+sendthread.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/svn/!svn/ver/1044/vision/botmaster2012/sendthread.cpp
+END
+robotfactory.h
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/svn/!svn/ver/1114/vision/botmaster2012/robotfactory.h
+END
+image.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/svn/!svn/ver/1122/vision/botmaster2012/image.cpp
+END
+protocolparser.h
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svn/!svn/ver/1044/vision/botmaster2012/protocolparser.h
+END
+botmaster2012.pro
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svn/!svn/ver/1114/vision/botmaster2012/botmaster2012.pro
+END
+main.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 48
+/svn/!svn/ver/1087/vision/botmaster2012/main.cpp
+END
+timer.h
+K 25
+svn:wc:ra_dav:version-url
+V 47
+/svn/!svn/ver/1044/vision/botmaster2012/timer.h
+END
+visiontime.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/svn/!svn/ver/1099/vision/botmaster2012/visiontime.cpp
+END
+camera.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/svn/!svn/ver/1109/vision/botmaster2012/camera.cpp
+END
+comm.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 48
+/svn/!svn/ver/1105/vision/botmaster2012/comm.cpp
+END
+Makefile
+K 25
+svn:wc:ra_dav:version-url
+V 48
+/svn/!svn/ver/1049/vision/botmaster2012/Makefile
+END
+lpt.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 47
+/svn/!svn/ver/1044/vision/botmaster2012/lpt.cpp
+END
+gspca_ov534.conf
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svn/!svn/ver/1044/vision/botmaster2012/gspca_ov534.conf
+END
+capturethread.h
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/svn/!svn/ver/1101/vision/botmaster2012/capturethread.h
+END
+config.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/svn/!svn/ver/1090/vision/botmaster2012/config.cpp
+END
+pilt.jpg
+K 25
+svn:wc:ra_dav:version-url
+V 48
+/svn/!svn/ver/1089/vision/botmaster2012/pilt.jpg
+END
+objecttype.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/svn/!svn/ver/1044/vision/botmaster2012/objecttype.cpp
+END
+abstractrobot.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svn/!svn/ver/1106/vision/botmaster2012/abstractrobot.cpp
+END
+server.h
+K 25
+svn:wc:ra_dav:version-url
+V 48
+/svn/!svn/ver/1044/vision/botmaster2012/server.h
+END
+robotfactory.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svn/!svn/ver/1114/vision/botmaster2012/robotfactory.cpp
+END
+protocolparser.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/!svn/ver/1044/vision/botmaster2012/protocolparser.cpp
+END
+view.h
+K 25
+svn:wc:ra_dav:version-url
+V 46
+/svn/!svn/ver/1044/vision/botmaster2012/view.h
+END
+timer.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/svn/!svn/ver/1044/vision/botmaster2012/timer.cpp
+END
+arduinocomm.h
+K 25
+svn:wc:ra_dav:version-url
+V 53
+/svn/!svn/ver/1044/vision/botmaster2012/arduinocomm.h
+END
+sendthread.h
+K 25
+svn:wc:ra_dav:version-url
+V 52
+/svn/!svn/ver/1044/vision/botmaster2012/sendthread.h
+END
+image.h
+K 25
+svn:wc:ra_dav:version-url
+V 47
+/svn/!svn/ver/1107/vision/botmaster2012/image.h
+END
+visiontime.h
+K 25
+svn:wc:ra_dav:version-url
+V 52
+/svn/!svn/ver/1084/vision/botmaster2012/visiontime.h
+END
+capturethread.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svn/!svn/ver/1101/vision/botmaster2012/capturethread.cpp
+END
+camera.h
+K 25
+svn:wc:ra_dav:version-url
+V 48
+/svn/!svn/ver/1081/vision/botmaster2012/camera.h
+END
+comm.h
+K 25
+svn:wc:ra_dav:version-url
+V 46
+/svn/!svn/ver/1105/vision/botmaster2012/comm.h
+END
+pilt.bmp
+K 25
+svn:wc:ra_dav:version-url
+V 48
+/svn/!svn/ver/1089/vision/botmaster2012/pilt.bmp
+END
+server.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/svn/!svn/ver/1044/vision/botmaster2012/server.cpp
+END
+config.h
+K 25
+svn:wc:ra_dav:version-url
+V 48
+/svn/!svn/ver/1090/vision/botmaster2012/config.h
+END
+view.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 48
+/svn/!svn/ver/1084/vision/botmaster2012/view.cpp
+END
+objecttype.h
+K 25
+svn:wc:ra_dav:version-url
+V 52
+/svn/!svn/ver/1044/vision/botmaster2012/objecttype.h
+END
+arduinocomm.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/svn/!svn/ver/1044/vision/botmaster2012/arduinocomm.cpp
+END
+abstractrobot.h
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/svn/!svn/ver/1106/vision/botmaster2012/abstractrobot.h
+END

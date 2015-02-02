@@ -1,0 +1,53 @@
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/svn/!svn/ver/1044/vision/botmaster2012/robots/hal
+END
+halmath.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/!svn/ver/1044/vision/botmaster2012/robots/hal/halmath.cpp
+END
+haldebug.h
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/!svn/ver/1044/vision/botmaster2012/robots/hal/haldebug.h
+END
+halmath.h
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/!svn/ver/1044/vision/botmaster2012/robots/hal/halmath.h
+END
+hal.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/!svn/ver/1044/vision/botmaster2012/robots/hal/hal.cpp
+END
+haltest.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/!svn/ver/1044/vision/botmaster2012/robots/hal/haltest.cpp
+END
+hal.h
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svn/!svn/ver/1044/vision/botmaster2012/robots/hal/hal.h
+END
+haltest.h
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/!svn/ver/1044/vision/botmaster2012/robots/hal/haltest.h
+END
+haldebug.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/!svn/ver/1044/vision/botmaster2012/robots/hal/haldebug.cpp
+END

@@ -1,0 +1,34 @@
+[robot]
+
+; Robot name
+robot_name = Prügikoll
+
+; Using devices
+video_device = /dev/video0
+serial_device = /dev/ttyUSB0
+
+; Video settings
+brightness = 100
+contrast = 100
+white_balance = 100
+white_balance_auto = no
+
+; Debuging
+testing = yes
+debug_timing = no
+local_screen = yes
+remote_screen = no
+
+; Bitmap input
+use_bitmap_input = no
+bitmap_filename = picture.jpg
+
+; *************************************************
+; ********** Problably no need to change **********
+; *************************************************
+
+; COM port settings
+com_speed = 123
+com_bits = 8
+com_parity = no
+com_stop_bits = 1

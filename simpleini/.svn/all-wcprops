@@ -1,0 +1,119 @@
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/svn/!svn/ver/1044/vision/botmaster2012/simpleini
+END
+test1-input.ini
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/svn/!svn/ver/1044/vision/botmaster2012/simpleini/test1-input.ini
+END
+simpleini.doxy
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/!svn/ver/1044/vision/botmaster2012/simpleini/simpleini.doxy
+END
+test1-expected.ini
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/svn/!svn/ver/1044/vision/botmaster2012/simpleini/test1-expected.ini
+END
+Makefile
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/!svn/ver/1044/vision/botmaster2012/simpleini/Makefile
+END
+testsi-UTF8.ini
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/svn/!svn/ver/1044/vision/botmaster2012/simpleini/testsi-UTF8.ini
+END
+simpleini.dsp
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/!svn/ver/1044/vision/botmaster2012/simpleini/simpleini.dsp
+END
+SimpleIni.h
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/!svn/ver/1044/vision/botmaster2012/simpleini/SimpleIni.h
+END
+ConvertUTF.c
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/!svn/ver/1044/vision/botmaster2012/simpleini/ConvertUTF.c
+END
+test1.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/!svn/ver/1044/vision/botmaster2012/simpleini/test1.cpp
+END
+SimpleIni.sln
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/!svn/ver/1044/vision/botmaster2012/simpleini/SimpleIni.sln
+END
+simpleini.dsw
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/!svn/ver/1044/vision/botmaster2012/simpleini/simpleini.dsw
+END
+ConvertUTF.h
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/!svn/ver/1044/vision/botmaster2012/simpleini/ConvertUTF.h
+END
+snippets.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/!svn/ver/1044/vision/botmaster2012/simpleini/snippets.cpp
+END
+ini.syn
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svn/!svn/ver/1044/vision/botmaster2012/simpleini/ini.syn
+END
+SimpleIni.vcproj
+K 25
+svn:wc:ra_dav:version-url
+V 66
+/svn/!svn/ver/1044/vision/botmaster2012/simpleini/SimpleIni.vcproj
+END
+testsi.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/!svn/ver/1044/vision/botmaster2012/simpleini/testsi.cpp
+END
+testsi-EUCJP.ini
+K 25
+svn:wc:ra_dav:version-url
+V 66
+/svn/!svn/ver/1044/vision/botmaster2012/simpleini/testsi-EUCJP.ini
+END
+package.cmd
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/!svn/ver/1044/vision/botmaster2012/simpleini/package.cmd
+END
+testsi-SJIS.ini
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/svn/!svn/ver/1044/vision/botmaster2012/simpleini/testsi-SJIS.ini
+END

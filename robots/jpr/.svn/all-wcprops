@@ -1,0 +1,131 @@
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/svn/!svn/ver/1044/vision/botmaster2012/robots/jpr
+END
+jprimage.h
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/!svn/ver/1044/vision/botmaster2012/robots/jpr/jprimage.h
+END
+configfile.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/svn/!svn/ver/1044/vision/botmaster2012/robots/jpr/configfile.cpp
+END
+jprmath.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/!svn/ver/1044/vision/botmaster2012/robots/jpr/jprmath.cpp
+END
+jprnet.h
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/!svn/ver/1044/vision/botmaster2012/robots/jpr/jprnet.h
+END
+jprmath.h
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/!svn/ver/1044/vision/botmaster2012/robots/jpr/jprmath.h
+END
+configfile.h
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/!svn/ver/1044/vision/botmaster2012/robots/jpr/configfile.h
+END
+jpromnicontrol.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/svn/!svn/ver/1044/vision/botmaster2012/robots/jpr/jpromnicontrol.cpp
+END
+GeneralDefines.h
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/svn/!svn/ver/1044/vision/botmaster2012/robots/jpr/GeneralDefines.h
+END
+jpromni.h
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/!svn/ver/1044/vision/botmaster2012/robots/jpr/jpromni.h
+END
+jpromnicontrol.h
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/svn/!svn/ver/1044/vision/botmaster2012/robots/jpr/jpromnicontrol.h
+END
+jpr.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/!svn/ver/1044/vision/botmaster2012/robots/jpr/jpr.cpp
+END
+jprtest.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/!svn/ver/1044/vision/botmaster2012/robots/jpr/jprtest.cpp
+END
+jprgyro.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/!svn/ver/1044/vision/botmaster2012/robots/jpr/jprgyro.cpp
+END
+jprcontrol.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/svn/!svn/ver/1044/vision/botmaster2012/robots/jpr/jprcontrol.cpp
+END
+jprimage.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/!svn/ver/1044/vision/botmaster2012/robots/jpr/jprimage.cpp
+END
+jprdefines.h
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/!svn/ver/1044/vision/botmaster2012/robots/jpr/jprdefines.h
+END
+jpr.h
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svn/!svn/ver/1044/vision/botmaster2012/robots/jpr/jpr.h
+END
+jprtest.h
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/!svn/ver/1044/vision/botmaster2012/robots/jpr/jprtest.h
+END
+jprgyro.h
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/!svn/ver/1044/vision/botmaster2012/robots/jpr/jprgyro.h
+END
+jprcontrol.h
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/!svn/ver/1044/vision/botmaster2012/robots/jpr/jprcontrol.h
+END
+jprnet.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/!svn/ver/1044/vision/botmaster2012/robots/jpr/jprnet.cpp
+END

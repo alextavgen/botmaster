@@ -1,0 +1,794 @@
+/**
+ * @file image.cpp
+ * @brief C++ Implementation: image
+ * 
+ * @details This file holds image processing functionality.
+ * 
+ * Copyright: See COPYING file that comes with this distribution
+ * 
+ * @author Valdur Kaldvee (C) 2011
+ * @author Margus Ernits <margus.ernits@itcollege.ee>, (C) 2008
+ * @author Mauno Pihelgas <mpihelga@itcollege.ee>, (C) 2010
+ */
+#include "image.h"
+#include <stdio.h>
+#include <iostream>
+#include "visiontime.h"
+#include "capturethread.h"
+
+Image::Image()
+{
+	fpsCounter = 0;
+	fps = 0;
+	start = 1;
+	Config & tmp = Config::getConfig();
+	conf = & tmp;
+
+    VisionTime::DO()->markBegin("generate_LUT_table");
+	LUT = cvCreateMat(16777216, 1, CV_8UC3);
+    genLut(LUT,CV_BGR2HLS);
+    VisionTime::DO()->markEnd("generate_LUT_table");
+
+#ifdef XI
+	xiH=cam.getXI_Capture();
+	xi_image.size = sizeof(XI_IMG);
+	xi_image.bp = NULL;
+	xi_image.bp_size = 0;
+#else
+    capture = cam.getCapture();
+    captureThread.startAcquisition(capture);
+#endif
+	colorBall.val[0] = 0;
+	colorBall.val[1] = 255;
+	colorBall.val[2] = 255;
+	colorBall.val[3] = 0;
+
+	colorGoal.val[0] = 255;
+	colorGoal.val[1] = 0;
+	colorGoal.val[2] = 255;
+	colorGoal.val[3] = 0;
+
+        double hScale = 1.0;
+        double vScale = 1.0;
+	int lineWidth = 2;
+	cvInitFont(&font, CV_FONT_HERSHEY_COMPLEX_SMALL, hScale, vScale, 0, lineWidth, 8);
+	storage = cvCreateMemStorage(0);
+#ifdef XI	
+        xi_img_raw = cvCreateImage(cvSize(1280, 512), IPL_DEPTH_8U, 1);
+        img = cvCreateImage(cvSize(1280, 512), IPL_DEPTH_8U, 3);
+	xiStartAcquisition(xiH);
+#endif
+}
+
+Image::~Image()
+{
+	if(work) cvReleaseImage(&work);
+  
+	if(binary) cvReleaseImage(&binary);
+
+	if(LUT)  cvReleaseMat(&LUT);
+
+	if(capture) cvReleaseCapture(&capture);
+	
+#ifdef XI
+	// Close device
+	if (xiH)
+		xiCloseDevice(xiH);
+#endif
+}
+
+
+void Image::genLut(CvMat* LUT, int code) {
+	int   step  = LUT->step/sizeof(uchar);
+	uchar *data = LUT->data.ptr;
+
+	int i;
+	for(i = 0; i < 16777216; i++) {
+		data[i*step+0] = (uchar) i;
+		data[i*step+1] = (uchar) (i >> 8);
+		data[i*step+2] = (uchar) (i >> 16);
+	}
+
+	cvCvtColor(LUT, LUT, code);
+}
+
+/*!
+    \fn Image::cvQueryFrame(CvCapture*);
+ */
+IplImage* Image::getFrame()
+{
+        VisionTime::DO()->newFrame();
+
+	/// @todo implement me
+	if (conf->getShowImage() == 0) {
+#ifdef XI
+            VisionTime::DO()->markBegin("get_img_and_cpy");
+    stat = xiGetImage(xiH, 5000, &xi_image);
+		HandleResult(stat,"xiGetImage");
+		//printf("Image %d (%dx%d) received from camera\n", images, (int)image.width, (int)image.height);
+		
+		memcpy(xi_img_raw->imageData, xi_image.bp, xi_image.width*xi_image.height);		
+                VisionTime::DO()->markEnd("get_img_and_cpy");
+
+                //cvCvtColor(xi_img_raw, img, CV_GRAY2BGR);
+                VisionTime::DO()->markBegin("bayer_bgr_conversion");
+                cvCvtColor(xi_img_raw, img, CV_BayerRG2BGR);
+                VisionTime::DO()->markEnd("bayer_bgr_conversion");
+#else
+        VisionTime::DO()->markBegin("get_frame_from_cam_imagecpp");
+        //img = cvQueryFrame(capture);
+        img = captureThread.getLatestFrame();
+        VisionTime::DO()->markEnd("get_frame_from_cam_imagecpp");
+		// std::cout<<"Camera Frame\n";
+#endif
+	} else {
+        VisionTime::DO()->markBegin("get_image_from_cam");
+		img=cam.getImg();
+        VisionTime::DO()->markEnd("get_image_from_cam");
+		// std::cout<<"Image Frame\n";
+	}	  
+	fpsCounter++;
+	if (time2.elapsed() >= 1000) {
+		time2.restart();
+		fps = fpsCounter;
+		fpsCounter = 0;
+	}
+	
+	time1.start();
+ 
+    VisionTime::DO()->markBegin("set_frame_roi");
+	// process only part of the image
+    cvSetImageROI(img, cvRect(0, conf->getTopCut(), img->width, img->height));
+    //cvSetImageROI(img, cvRect(0, 150, img->width, img->height));
+    VisionTime::DO()->markEnd("set_frame_roi");
+
+    VisionTime::DO()->markBegin("create_image_objects");
+    if (start == 1) {
+		// get the image data
+		height = img->height;
+		width  = img->width;
+
+		work = cvCreateImage( cvGetSize(img), IPL_DEPTH_8U, 3);
+		work->origin = img->origin;
+		binary = cvCreateImage( cvGetSize(img), IPL_DEPTH_8U, 1);
+		binary->origin = img->origin;
+
+		time2.start();
+		start = 0;
+	}
+    VisionTime::DO()->markEnd("create_image_objects");
+
+#ifdef XI
+        //cvCopy(img, work, NULL);
+        VisionTime::DO()->markBegin("LUT_bgr_hsl");
+        fastCvtColor(img, work, LUT);
+        VisionTime::DO()->markEnd("LUT_bgr_hsl");
+#else
+        VisionTime::DO()->markBegin("gaussian");
+        cvSmooth(img, work, CV_GAUSSIAN, 3, 3, 0, 0 );
+        VisionTime::DO()->markEnd("gaussian");
+        VisionTime::DO()->markBegin("fast_lut");
+        fastCvtColor(work, LUT);
+        //fastCvtColor_int(work);
+        VisionTime::DO()->markEnd("fast_lut");
+#endif
+
+        VisionTime::DO()->markBegin("test_cvline");
+	// draw center line
+	cvLine(img, cvPoint(img->width/2, 0), cvPoint(img->width/2, img->height), CV_RGB(0,0,127), 2, 8, 0);
+        VisionTime::DO()->markEnd("test_cvline");
+
+    VisionTime::DO()->markBegin("print_frame_statistics");
+	sprintf(str, "%d", time1.elapsed());
+	cvPutText(img, str, cvPoint(10, 50), &font, CV_RGB(255,0,0));
+
+    sprintf(str, "FPS %d", fps);
+    cvPutText(img, str, cvPoint(10, 80), &font, CV_RGB(255,0,0));
+    VisionTime::DO()->markEnd("print_frame_statistics");
+
+	return img;
+}
+
+
+/*!
+    \fn Image::getImage()
+ */
+Image &  Image::getImage()
+{
+	static Image instance;
+	return instance;
+}
+
+IplImage* Image::getImagePtr()
+{
+	return img;
+}
+
+void Image::reOpen(){
+    cam.close();
+
+    cam.reOpen();
+    capture=cam.getCapture();
+}
+
+void Image::HSLAverage(CvRect rect){
+    int height, width, step, channels;
+    height    = work->height;
+    width     = work->width;
+    step      = work->widthStep;
+    channels  = work->nChannels;
+    uchar *data1 = (uchar *)work->imageData;
+
+    int i,j;
+
+    double H, L, S, c;
+    double Hc, Lc, Sc;
+    H = 0.0;
+    L = 0.0;
+    S = 0.0;
+    c = 0.0;
+    Hc = 0.0;
+    Lc = 0.0;
+    Sc = 0.0;
+
+    for(i = rect.y; i < rect.y+rect.height; i++) for(j = rect.x; j < rect.x+rect.width; j++) {
+        Hc += data1[i*step+j*channels+0];
+        Lc += data1[i*step+j*channels+1];
+        Sc += data1[i*step+j*channels+2];
+        c++;
+    }
+    Hc /= c;
+    Lc /= c;
+    Sc /= c;
+    for(i = rect.y; i < rect.y+rect.height; i++) for(j = rect.x; j < rect.x+rect.width; j++) {
+        H += pow((double)data1[i*step+j*channels+0]-Hc, 2.0);
+        L += pow((double)data1[i*step+j*channels+1]-Lc, 2.0);
+        S += pow((double)data1[i*step+j*channels+2]-Sc, 2.0);
+    }
+
+    std::cout<<"H:"<<Hc<<"_"<<(H/c)<<std::endl;
+    std::cout<<"L:"<<Lc<<"_"<<(L/c)<<std::endl;
+    std::cout<<"S:"<<Sc<<"_"<<(S/c)<<std::endl;
+}
+
+void Image::findFieldEdge(IplImage* img, IplImage* work, IplImage* binary, int* fieldEdge, ObjectType type, int hor) {
+        CvSeq* contours = NULL;
+        CvMemStorage* storage = NULL;
+        Image::Object obj;
+
+        int height, width, step , step2, channels;
+        uchar *data1;
+        uchar *data2;
+        int i, j;
+        uchar S, L;
+        int match = 0;
+        int nrOfMatches = 0;
+        CvSeqReader reader;
+        CvPoint p;
+        CvPoint pLeft;
+        CvPoint pRight;
+        int fieldEdgeTemp[img->width];
+
+        // get the image data
+        height    = work->height;
+        width     = work->width;
+        step      = work->widthStep;
+        channels  = work->nChannels;
+        data1     = (uchar *)work->imageData;
+
+        // get the image data
+        step2     = binary->widthStep;
+        data2     = (uchar *)binary->imageData;
+
+        for(i = 0; i < height; i++) for(j = 0; j < width; j++) {
+                match = 0;
+                if (i > hor) {
+                        L = data1[i*step+j*channels+1];
+                        S = data1[i*step+j*channels+2];
+
+                        // if pixel is black
+                        if (L < type.lMax && S < type.sMax) match = 1;
+                }
+
+                if (match) {
+                        nrOfMatches++;
+                        data2[i*step2+j] = 255;
+                } else {
+                        data2[i*step2+j] = 0;
+                }
+        }
+
+        if (nrOfMatches < MIN_AREA) return;
+
+        storage = cvCreateMemStorage(0);
+        i = cvFindContours(binary, storage, &contours, sizeof(CvContour), CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE, cvPoint(0,0));
+        //fprintf(stderr,"Contours: %d\n", i);
+
+        if (i == 0) {
+                cvReleaseMemStorage(&storage);
+                return;
+        }
+
+        while (contours) {
+                obj.area = fabs(cvContourArea(contours, CV_WHOLE_SEQ));
+
+                if (obj.area >= MIN_AREA * 4) {
+                        obj.rect = cvBoundingRect(contours, 0);
+
+                        obj.center.x = obj.rect.x+obj.rect.width / 2;
+                        obj.center.y = obj.rect.y+obj.rect.height / 2;
+
+                        cvStartReadSeq(contours, &reader, 0);
+
+                        pLeft.x = width;
+                        pRight.x = 0;
+                        memset(fieldEdgeTemp, -1, sizeof(fieldEdgeTemp));
+
+                        // find image maximum y for every x
+                        for (i = 0; i < contours->total; i++) {
+                                CV_READ_SEQ_ELEM(p, reader);
+                                if (p.y > fieldEdge[p.x] && p.y > fieldEdgeTemp[p.x]) fieldEdgeTemp[p.x] = p.y;
+
+                                if (p.x < pLeft.x) {
+                                    pLeft.x = p.x;
+                                    pLeft.y = p.y;
+                                }
+
+                                if (p.x > pRight.x) {
+                                    pRight.x = p.x;
+                                    pRight.y = p.y;
+                                }
+                        }
+
+                        // Black contour line length
+                        float lineLength = sqrt(pow(pLeft.x-pRight.x, 2) + pow(pLeft.y-pRight.y, 2));
+
+                        if (conf->getShowDebugInfo()) {
+                            cvLine(img, pLeft, pRight, CV_RGB(255,0,255), 1, 8, 0);
+                            sprintf(str, "%d", (int) lineLength);
+                            cvPutText(img, str, pLeft, &font, CV_RGB(255,0,255));
+                        }
+
+                        if (lineLength > width/4) {
+                            memcpy(&fieldEdge[pLeft.x], &fieldEdgeTemp[pLeft.x], sizeof(int)*(pRight.x - pLeft.x));
+                        }
+                }
+                // take the next contour
+                contours = contours->h_next;
+        }
+
+        // draw field edge
+        if (conf->getShowDebugInfo()) {
+                for (i = 0; i < width; i++) {
+                        cvLine(img, cvPoint(i, fieldEdge[i]), cvPoint(i, fieldEdge[i] - 3), CV_RGB(0,0,255), 1, 8, 0);
+                }
+        }
+
+        // cleanup
+        cvReleaseMemStorage(&storage);
+        return;
+}
+
+
+int Image::checkFieldEdge(IplImage* img, int* fieldEdge, CvPoint pt1, CvPoint pt2, CvPoint * intersectionPt) {
+        CvLineIterator iterator;
+        int count;
+
+        if (conf->getShowDebugInfo()) cvLine(img, pt1, pt2, CV_RGB(255,0,0), 1, 8, 0);
+
+        count = cvInitLineIterator(img, pt1, pt2, &iterator, 8, 0);
+
+        for (int i = 0; i < count; i++) {
+                int offset, x, y;
+
+                offset = iterator.ptr - (uchar*)(img->imageData);
+                y = offset/img->widthStep;
+                x = (offset - y*img->widthStep)/(3*sizeof(uchar));
+                y -= img->roi->yOffset; //if ROI is used
+
+                if (conf->getShowDebugInfo()) cvLine(img, cvPoint(x,y), cvPoint(x,y), CV_RGB(0,0,0), 1, 8, 0);
+
+                if (fieldEdge[x] > y) {
+                    if (intersectionPt != NULL) {
+                        intersectionPt->x = x;
+                        intersectionPt->y = y;
+                    }
+
+                    return 0;
+                }
+
+                CV_NEXT_LINE_POINT(iterator);
+        }
+
+        return 1;
+}
+
+void Image::findBall(IplImage* img, IplImage* work, IplImage* binary, int* fieldEdge, ObjectType type, int hor, int itemType) {
+        CvSeq* contours = NULL;
+        CvMemStorage* storage = NULL;
+        CvScalar color;
+        Image::Object obj;
+
+        int height, width, step , step2, channels;
+        uchar *data1;
+        uchar *data2;
+        int i, j;
+        uchar H, S, L;
+        int match = 0;
+        int nrOfMatches = 0;
+
+        float radius;
+        CvPoint2D32f center;
+        float circleArea;
+        float percent;
+
+        // get the image data
+        height    = work->height;
+        width     = work->width;
+        step      = work->widthStep;
+        channels  = work->nChannels;
+        data1     = (uchar *)work->imageData;
+
+        // get the image data
+        step2     = binary->widthStep;
+        data2     = (uchar *)binary->imageData;
+
+        for(i = 0; i < height; i++) for(j = 0; j < width; j++) {
+                match = 0;
+                if (i > hor) {
+                        H = data1[i*step+j*channels+0];
+                        L = data1[i*step+j*channels+1];
+                        S = data1[i*step+j*channels+2];
+
+                        // if pixel is ball color
+                        if (H > type.hMin && H < type.hMax &&
+                                L > type.lMin && L < type.lMax &&
+                                S > type.sMin) match = 1;
+                }
+
+                if (match) {
+                        nrOfMatches++;
+                        data2[i*step2+j] = 1;
+                } else {
+                        data2[i*step2+j] = 0;
+                }
+        }
+
+        if (nrOfMatches < MIN_AREA) return;
+
+        storage = cvCreateMemStorage(0);
+        i = cvFindContours(binary, storage, &contours, sizeof(CvContour), CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE, cvPoint(0,0));
+        //fprintf(stderr,"Contours: %d\n", i);
+
+        if (i == 0) {
+                cvReleaseMemStorage(&storage);
+                return;
+        }
+
+        while (contours) {
+                if (conf->getShowDebugInfo()) {
+                        cvDrawContours(img, contours, CV_RGB(255,0,0), CV_RGB(0,255,0),0, 2, CV_AA, cvPoint(0,0));
+                }
+
+                obj.area = fabs(cvContourArea(contours, CV_WHOLE_SEQ));
+
+                if (obj.area >= MIN_AREA && obj.area < (height * width) / 2) {
+                        obj.rect = cvBoundingRect(contours, 0);
+
+                        obj.type = itemType;
+                        color = colorBall;
+
+                        cvMinEnclosingCircle(contours, &center, &radius);
+
+                        obj.center.x = center.x;
+                        obj.center.y = center.y;
+
+                        // Check if no black line between robot and ball
+                        if (checkFieldEdge(img, fieldEdge, cvPoint(width/2, height), obj.center, NULL)) {
+                                obj.distanceH = obj.center.x - (width / 2);
+
+                                circleArea = 3.14159265 * radius * radius;
+                                percent = obj.area / circleArea * 100.0;
+
+                                obj.area = circleArea;
+
+                                if (conf->getShowDebugInfo()) {
+                                        sprintf(str, "%d", (int) obj.area);
+                                        //sprintf(str, "%d", (int) obj.center.y);
+                                        cvPutText(img, str, cvPoint(obj.center.x + 20, obj.center.y), &font, CV_RGB(0,0,0));
+                                }
+
+                                if (percent > 40.0 || obj.rect.y + obj.rect.height == height-1) {
+                                        cvCircle(img, cvPoint(center.x, center.y), radius, color, 2, CV_AA, 0);
+                                        cvSeqPush( found_objects, &obj );
+                                }
+                        }
+                }
+                // take the next contour
+                contours = contours->h_next;
+        }
+
+        // cleanup
+        cvReleaseMemStorage(&storage);
+        return;
+}
+
+
+void Image::findGoal(IplImage* img, IplImage* work, IplImage* binary, ObjectType type, int hor, int itemType) {
+	CvSeq* contours = NULL;
+	CvMemStorage* storage = NULL;
+	CvScalar color;
+	Image::Object obj;
+
+	int height, width, step , step2, channels;
+	uchar *data1;
+	uchar *data2;
+	int i, j;
+	uchar H, S, L;
+	int match;
+	int nrOfMatches = 0;
+	
+	int horDist;
+	int horDistMin;
+	
+	CvSeqReader reader;
+    	CvPoint p;
+
+	// get the image data
+	height    = work->height;
+	width     = work->width;
+	step      = work->widthStep;
+	channels  = work->nChannels;
+	data1     = (uchar *)work->imageData;
+
+	// get the image data
+	step2     = binary->widthStep;
+	data2     = (uchar *)binary->imageData;
+
+	for(i = 0; i < height; i++) for(j = 0; j < width; j++) {
+		match = 0;		
+		if (i > hor) {
+			H = data1[i*step+j*channels+0];
+			L = data1[i*step+j*channels+1];
+			S = data1[i*step+j*channels+2];
+
+			// if pixel is goal color
+			if (H > type.hMin && H < type.hMax &&
+				L > type.lMin && L < type.lMax &&
+				S > type.sMin) match = 1;
+		}
+
+		if (match) {
+			nrOfMatches++;
+			data2[i*step2+j] = 1;
+		} else {
+			data2[i*step2+j] = 0;
+		}
+	}
+
+	if (nrOfMatches < MIN_AREA) return;
+
+	storage = cvCreateMemStorage(0);
+	i = cvFindContours(binary, storage, &contours, sizeof(CvContour), CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE, cvPoint(0,0));
+	//fprintf(stderr,"Contours: %d\n", i);
+
+	if (i == 0) {
+		cvReleaseMemStorage(&storage);
+		return;
+	}
+
+	while (contours) {
+		if (conf->getShowDebugInfo()) {
+			cvDrawContours(img, contours, CV_RGB(255,127,0), CV_RGB(0,255,0),0, 2, CV_AA, cvPoint(0,0));
+		}
+
+		obj.area = fabs(cvContourArea(contours, CV_WHOLE_SEQ));
+
+		if (obj.area >= MIN_AREA) {
+			// Find minimal distance between goal and min height			
+			horDistMin = height - 1;
+			cvStartReadSeq(contours, &reader, 0);
+			
+			for (i = 0; i < contours->total; i++) {
+				CV_READ_SEQ_ELEM(p, reader);
+				horDist = p.y - hor;
+				
+				if (horDist < horDistMin) {
+					horDistMin = horDist;
+				}
+			}
+			
+			if (horDistMin <= 1) {			
+				obj.rect = cvBoundingRect(contours, 0);
+			
+				obj.type = itemType;
+				color = colorGoal;
+			
+				obj.center.x = obj.rect.x+obj.rect.width / 2;
+				obj.center.y = obj.rect.y+obj.rect.height / 2;
+			
+				obj.distanceH = obj.center.x - (width / 2);
+				
+				if (conf->getShowDebugInfo()) {
+					sprintf(str, "%d", obj.rect.width);
+					cvPutText(img, str, cvPoint(obj.rect.x, obj.rect.y - 10), &font, CV_RGB(0,255,0));
+				}
+			
+				cvRectangle(img, cvPoint(obj.rect.x, obj.rect.y), cvPoint(obj.rect.x+obj.rect.width, obj.rect.y+obj.rect.height), color, 2, 8, 0);
+				cvSeqPush(found_objects, &obj);
+			}
+		}
+
+		// take the next contour
+		contours = contours->h_next;
+	}
+
+	// cleanup
+ 	cvReleaseMemStorage(&storage);
+	return;
+}
+
+void Image::findFieldEdgePoint(IplImage* img, int* fieldEdge, int hor, int x, int itemType) {
+        Image::Object obj;
+        int noFieldEdge;
+
+        noFieldEdge = checkFieldEdge(img, fieldEdge, cvPoint(x, img->height), cvPoint(x, hor), &obj.center);
+
+        if (!noFieldEdge) {
+            cvSeqPush(found_objects, &obj);
+            if (conf->getShowDebugInfo()) cvCircle(img, obj.center, 15, CV_RGB(128,128,128), 2, CV_AA, 0);
+        }
+}
+
+void Image::fastCvtColor(IplImage* imgSrc, CvMat* LUT) {
+        int height, width, step1, channels, BGR, i, j;
+        uchar *dataSrc;
+
+        int   step2  = LUT->step/sizeof(uchar);
+        uchar *dataLUT = LUT->data.ptr;
+
+        // get the image data
+        height = imgSrc->height;
+        width = imgSrc->width;
+        step1 = imgSrc->widthStep;
+        channels = imgSrc->nChannels;
+        dataSrc = (uchar *)imgSrc->imageData;
+
+
+        int* ptr;
+        for(i = 0; i < height; i++) for(j = 0; j < width; j++) {
+                ptr = (int*)&dataSrc[i*step1+j*channels];
+
+                BGR = *ptr & 0xFFFFFF;
+
+                memcpy(ptr, &dataLUT[BGR*step2], 3);
+        }
+}
+
+void Image::fastCvtColor(IplImage* imgSrc, IplImage* imgDest, CvMat* LUT) {
+	int height, width, step1, channels, BGR, i, j;
+        uchar *dataSrc;
+        uchar *dataDest;
+
+
+	int   step2  = LUT->step/sizeof(uchar);
+        uchar *dataLUT = LUT->data.ptr;
+    
+	// get the image data
+        height = imgSrc->height;
+        width = imgSrc->width;
+        step1 = imgSrc->widthStep;
+        channels = imgSrc->nChannels;
+        dataSrc = (uchar *)imgSrc->imageData;
+        dataDest = (uchar *)imgDest->imageData;
+
+
+        int* ptrSrc;
+        int* ptrDest;
+        int index;
+
+	for(i = 0; i < height; i++) for(j = 0; j < width; j++) {
+
+                index = i*step1+j*channels;
+                ptrSrc = (int*)&dataSrc[index];
+                ptrDest = (int*)&dataDest[index];
+
+                BGR = *ptrSrc & 0xFFFFFF;
+
+                memcpy(ptrDest, &dataLUT[BGR*step2], 3);
+	}
+}
+
+void Image::fastCvtColor_int(IplImage* imgSrc ){
+
+
+    int height    = imgSrc->height;
+    int width     = imgSrc->width;
+    int step      = imgSrc->widthStep;
+    int channels  = imgSrc->nChannels;
+    uchar * data1     = (uchar *)imgSrc->imageData;
+    int b,g,r;
+    int hue,lum,sat;
+
+    for(int i = 0; i < height; i++) for(int j = 0; j < width; j++) {
+
+
+            b = data1[i*step+j*channels+0];
+            g = data1[i*step+j*channels+1];
+            r = data1[i*step+j*channels+2];
+
+            int min = std::min(std::min(r, g), b);
+            int max = std::max(std::max(r, g), b);
+
+            if (min != max)
+            {
+            if (r == max && g >= b)
+            hue = (g - b) * 85 / (max - min) / 2 + 0;
+            else if (r == max && g < b)
+            hue = (g - b) * 85 / (max - min) / 2 + 255;
+            else if (g == max)
+            hue = (b - r) * 85 / (max - min) / 2 + 85;
+            else if (b == max)
+            hue = (r - g) * 85 / (max - min) / 2 + 171;
+            }
+
+            lum = (min + max) / 2;
+
+
+            if (min == max)
+            sat = 0; // gray
+            else if (min + max < 256)
+            sat = (max - min) << 8 / (min + max);
+            else
+            sat = (max - min) << 8 / (512 - min - max);
+
+
+            data1[i*step+j*channels+0]=hue;
+            data1[i*step+j*channels+1]=lum;
+            data1[i*step+j*channels+2]=sat;
+    }
+}
+
+
+
+void Image::process(int minHeight, int dummy1, int dummy2, int dummy3) {
+        CvMemStorage* storage = NULL;
+        int fieldEdge[img->width];
+        int i;
+
+        cvLine(img, cvPoint(0, minHeight), cvPoint(img->width, minHeight), CV_RGB(255,0,0), 1, 8, 0);
+
+        if(!(&found_objects->storage)) cvReleaseMemStorage(&found_objects->storage);
+        storage = cvCreateMemStorage(0);
+        found_objects = cvCreateSeq(0, sizeof(CvSeq), sizeof(Object), storage);
+
+        VisionTime::DO()->markBegin("find_field_edge");
+        memset(fieldEdge, -1, sizeof(fieldEdge));
+        findFieldEdge(img, work, binary, fieldEdge, *(conf->getBlack()), minHeight);
+        VisionTime::DO()->markEnd("find_field_edge");
+
+        VisionTime::DO()->markBegin("find_field_edge_point");
+        findFieldEdgePoint(img, fieldEdge, minHeight, (img->width/2) + (width * 0.1), FIELD_EDGE_R);
+        findFieldEdgePoint(img, fieldEdge, minHeight, (img->width/2) - (width * 0.1), FIELD_EDGE_L);
+        VisionTime::DO()->markEnd("find_field_edge_point");
+
+        VisionTime::DO()->markBegin("findBall");
+        findBall(img, work, binary, fieldEdge, *(conf->getOrange()), minHeight, BALL);
+        VisionTime::DO()->markEnd("findBall");
+
+        VisionTime::DO()->markBegin("findYellowGoal");
+        findGoal(img, work, binary, *(conf->getYellow()), minHeight, GOAL_YELLOW);
+        VisionTime::DO()->markEnd("findYellowGoal");
+
+        VisionTime::DO()->markBegin("findBlueGoal");
+        findGoal(img, work, binary, *(conf->getBlue()), minHeight, GOAL_BLUE);
+        VisionTime::DO()->markEnd("findBlueGoal");
+
+        VisionTime::DO()->markBegin("release_mem_storage");
+        cvReleaseMemStorage(&storage);
+        VisionTime::DO()->markEnd("release_mem_storage");
+}
+#ifdef XI
+HANDLE Image::xiH=NULL;
+XI_RETURN Image::stat=0;
+#endif

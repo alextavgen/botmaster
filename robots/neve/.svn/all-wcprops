@@ -1,0 +1,41 @@
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/svn/!svn/ver/1108/vision/botmaster2012/robots/neve
+END
+neve.h
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/!svn/ver/1108/vision/botmaster2012/robots/neve/neve.h
+END
+nevetest.h
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/!svn/ver/1044/vision/botmaster2012/robots/neve/nevetest.h
+END
+robottestsuite.h
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/svn/!svn/ver/1044/vision/botmaster2012/robots/neve/robottestsuite.h
+END
+neve.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/!svn/ver/1108/vision/botmaster2012/robots/neve/neve.cpp
+END
+nevetest.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/!svn/ver/1108/vision/botmaster2012/robots/neve/nevetest.cpp
+END
+robottestsuite.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 70
+/svn/!svn/ver/1044/vision/botmaster2012/robots/neve/robottestsuite.cpp
+END

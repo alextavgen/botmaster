@@ -1,0 +1,29 @@
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svn/!svn/ver/1044/vision/botmaster2012/utils/lpt_daemon
+END
+lpt_daemon.pro
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/svn/!svn/ver/1044/vision/botmaster2012/utils/lpt_daemon/lpt_daemon.pro
+END
+parallelport.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/svn/!svn/ver/1044/vision/botmaster2012/utils/lpt_daemon/parallelport.cpp
+END
+main.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/svn/!svn/ver/1044/vision/botmaster2012/utils/lpt_daemon/main.cpp
+END
+parallelport.h
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/svn/!svn/ver/1044/vision/botmaster2012/utils/lpt_daemon/parallelport.h
+END

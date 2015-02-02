@@ -1,0 +1,53 @@
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/svn/!svn/ver/1121/vision/botmaster2012/robots/maiu
+END
+robottestsuite.h
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/svn/!svn/ver/1088/vision/botmaster2012/robots/maiu/robottestsuite.h
+END
+maiudebug.h
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/!svn/ver/1097/vision/botmaster2012/robots/maiu/maiudebug.h
+END
+maiu.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/!svn/ver/1121/vision/botmaster2012/robots/maiu/maiu.cpp
+END
+maiutest.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/!svn/ver/1088/vision/botmaster2012/robots/maiu/maiutest.cpp
+END
+robottestsuite.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 70
+/svn/!svn/ver/1088/vision/botmaster2012/robots/maiu/robottestsuite.cpp
+END
+maiu.h
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/!svn/ver/1112/vision/botmaster2012/robots/maiu/maiu.h
+END
+maiutest.h
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/!svn/ver/1088/vision/botmaster2012/robots/maiu/maiutest.h
+END
+maiudebug.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/svn/!svn/ver/1110/vision/botmaster2012/robots/maiu/maiudebug.cpp
+END

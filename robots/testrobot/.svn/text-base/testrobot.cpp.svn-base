@@ -1,0 +1,237 @@
+/**
+ * @file testrobot.cpp
+ * @brief C++ Implementation: testrobot
+ * 
+ * @details Configuration module for Robot Vision System.
+ * 
+ * Copyright: See COPYING file that comes with this distribution
+ * 
+ * @author Valdur Kaldvee (C) 2008
+ * @author Margus Ernits <margus.ernits@itcollege.ee>, (C) 2008
+ * @author Mauno Pihelgas <mpihelga@itcollege.ee>, (C) 2010
+ */
+#include "testrobot.h"
+#include <sys/time.h>
+#include <QTime>
+#include <QDebug>
+#include <iostream>
+#include <math.h>
+//#include "sendthread.h"
+#include "server.h"
+
+using namespace std;
+
+TestRobot::TestRobot()
+{
+
+}
+
+
+TestRobot::~TestRobot()
+{
+}
+
+void TestRobot::omni(float dirDeg, float velocityBody, int velocityMax, float velocityAngular, float battery) {
+        float velocityX, velocityY;
+        float velocityWheel[3];
+        float max = 0.0;
+        float scaleCoef;
+        float dirRad;
+        int pwm[3];
+        int pwmSum = 0;
+        int direction;
+        int i;
+
+        dirRad = dirDeg * 0.0174532925;	// degrees to radians
+
+        // Correcting speed according battery
+        direction = 1;
+        if (velocityBody < 0) direction = -1;
+        velocityBody = sqrt((velocityBody*velocityBody) * battery) * direction;
+
+        direction = 1;
+        if (velocityAngular < 0) direction = -1;
+        velocityAngular = sqrt((velocityAngular*velocityAngular) * battery) * direction;
+
+
+        velocityX = velocityBody * cos(dirRad);
+        velocityY = velocityBody * sin(dirRad);
+
+        //Vw[0] = round(cos(w1) * Vx + sin(w1) * Vy + L * Va);
+        //Vw[1] = round(cos(w2) * Vx + sin(w2) * Vy + L * Va);
+        //Vw[2] = round(cos(w3) * Vx + sin(w3) * Vy + L * Va);
+
+        // 150, 30, 270 (60, 300, 180)
+        velocityWheel[0] = -0.866025404 * velocityX + 0.5 * velocityY + velocityAngular;
+        velocityWheel[1] = 0.866025404 * velocityX + 0.5 * velocityY + velocityAngular;
+        velocityWheel[2] = -velocityY + velocityAngular;
+
+        // Voltage is not linearly proposional to power
+        max = 0.0;
+        for(i = 0; i < 3; i++) {
+                if (abs(velocityWheel[i]) > max) max = abs(velocityWheel[i]);
+        }
+
+        if (max > 0) {
+                for(i = 0; i < 3; i++) {
+                        direction = 1;
+                        if (velocityWheel[i] < 0) direction = -1;
+                        velocityWheel[i] = sqrt((max*max) * (abs(velocityWheel[i]) / max)) * direction;
+                }
+        }
+
+        // Scaling
+        max = 0.0;
+        for(i = 0; i < 3; i++) {
+                if (abs(velocityWheel[i]) > velocityMax) max = abs(velocityWheel[i]);
+        }
+
+        if (max > velocityMax) {
+                scaleCoef = velocityMax / max;
+                for(i = 0; i < 3; i++) {
+                        velocityWheel[i] = velocityWheel[i] * scaleCoef;
+                }
+        }
+
+        for(i = 0; i < 3; i++) {
+                pwm[i] = round(velocityWheel[i]);
+                pwmSum = pwmSum + pwm[i];
+        }
+
+        for(i = 0; i < 3; i++) {
+                // If not all wheels are stopped break wheels with 0 speed
+                if (pwm[i] == 0 && pwmSum != 0) {
+                        setDcMotor(i, 512);
+                } else {
+                        setDcMotor(i, pwm[i]);
+                }
+        }
+}
+
+void TestRobot::go()
+{
+QTime t;
+  struct timeval a,b;
+ Config  & conf  = Config::getConfig();
+ 
+ conf.setTopCut(0);
+
+ qDebug("TestRobot Start...\n");
+
+
+ Image::Object * obj;
+// SendThread *sendImage = new SendThread();
+// Server *server = new Server();
+// server->setAnalogs(analog);
+// server->setDigitals(digital);
+
+ conf.setSendCmdEnabled(1);
+ while(0){
+   gettimeofday(&a,NULL);
+   
+   getAnalog(0);
+//    getAnalog(0);
+//    getAnalog(0);
+//    getAnalog(0);
+//    getAnalog(0);
+//    getAnalog(0);
+   gettimeofday(&b,NULL);
+   std::cout<<"Töötlus "<<(b.tv_usec-a.tv_usec)<<std::endl;
+ }
+ 
+ // Mitme seriali test
+ while(0){
+	gettimeofday(&a, NULL);
+	
+	std::cout<<"--------------------"<<std::endl;
+	std::cout<<"Analoog 0:0 - "<<getAnalog(0, 0)<<std::endl;
+	std::cout<<"Analoog 0:1 - "<<getAnalog(0, 1)<<std::endl;
+	
+	gettimeofday(&b, NULL);
+	std::cout<<"Time: "<<b.tv_usec-a.tv_usec<<std::endl;
+ }
+  
+ // Seriali kiiruse test
+ // Loeb korraga kõiki esimese (0-nda) seriali analooge
+ while(0){
+   gettimeofday(&a, NULL);
+   getAnalogs();
+
+   std::cout<<"Values"<<std::endl;	
+   std::cout<<analog[0]<<std::endl;
+   std::cout<<analog[1]<<std::endl;
+   std::cout<<analog[2]<<std::endl;
+   std::cout<<analog[3]<<std::endl;
+   std::cout<<analog[4]<<std::endl;
+   std::cout<<analog[5]<<std::endl;
+   std::cout<<analog[6]<<std::endl;
+   std::cout<<analog[7]<<std::endl;   
+
+   gettimeofday(&b, NULL);
+   std::cout<<"Time: "<<b.tv_usec-a.tv_usec<<std::endl;
+   sleep(1);
+ }
+//sendImage->start();
+ while(1){
+//    gettimeofday(&a,NULL);
+  //t.start();
+   _img = image->getFrame();
+ //sendImage->setImg(_img);
+
+ image->process(202,0,0,0);
+//image->process(90,0,0,0);
+
+ //m->setImg(_img);
+ //server->setFrame(_img);
+// server->frame=_img;
+// getAnalogs();
+// omni(0,0,255,10,1);
+ //for (int i = 0; i < 8; i++ ) std::cout<<digital[i]<<",";
+ //std::cout<<endl;
+ 
+
+//qDebug()<<"Server frame "<<server->frame;
+
+
+ if (image->found_objects != NULL) {
+   for (int i = 0; i < image->found_objects->total; i++) {
+
+     obj =  (Image::Object* ) cvGetSeqElem( (image->found_objects), i );
+      
+      if(obj!=0){
+        //std::cout<<((obj->type))<<std::endl;
+        //std::cout<<((obj->distanceH))<<std::endl;
+        //std::cout<<((obj->area))<<std::endl;
+      }
+      
+   }
+ }
+// sendImage();
+
+
+ view->show(_img);
+cvWaitKey(2);
+if(image->fps < 1){
+     image->reOpen();
+     qDebug("FPS is too slow...reopening Camera!!!");
+ }
+
+//qDebug()<<"Show";
+//  gettimeofday(&b,NULL);
+// t.elapsed();
+ //std::cout<<"Töötlus "<<(b.tv_usec-a.tv_usec)/1000<<std::endl;
+//  std::cout<<"Töötlus "<<t<<std::endl;
+
+// qDebug("Töötlus: %d ms", t.elapsed());
+//std::cout<<"Laser: "<< getLaser()<<std::endl;
+ //t.restart();
+ 
+//  com.sendCommand(129,124);
+ //com.sendCommand(134,128);
+//std::cout<<"+++++++++++"<<std::endl;
+
+ }
+ 
+}
+
+

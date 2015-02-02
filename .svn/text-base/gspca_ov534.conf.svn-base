@@ -1,0 +1,1 @@
+options gspca-ov534 videomode=12 gain=0 awb=1 hflip=1 vflip=1

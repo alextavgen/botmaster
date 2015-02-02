@@ -1,0 +1,798 @@
+/**
+ * @file Palmer2.cpp
+ * @brief C++ Implementation: Palmer2
+ *
+ * @details Configuration module for Robot Vision System.
+ *
+ * Copyright: See COPYING file that comes with this distribution
+ *
+ * @author Aleksandr Tavgen (C) 2012
+ */
+
+#include "palmer2.h"
+#include <sys/time.h>
+#include <QTime>
+#include <QDebug>
+#include <iostream>
+#include <math.h>
+//#include "sendthread.h"
+#include "server.h"
+
+#define OPPONENT_GOAL 0
+#define BALL 1
+#define ROUND_TIME 95
+#define R_GOAL_YELLOW 3
+#define R_GOAL_BLUE 2
+#define BALL_SENSOR 0
+#define VILLAIN_GOAL_SWITCH 4
+
+#define FREE_WAY_TRESHOLD 410
+#define FLOOR_SENSOR_TRESHOLD 600
+#define GOAL_TRESHOLD 30
+#define CLEAR_TO_SHOOT_THRESHOLD 30
+#define BALL_SENSOR_THRESHOLD 700
+
+
+#define MAX_SPEED 100
+#define MAX_TURN_SPEED 40
+#define BALL_SEARCH_SPEED 60
+#define GOAL_SEARCH_SPEED 60
+#define SPEED_CF 210
+
+#define BALL_SEARCH_TIMER 4
+
+#define STATE_START_POSITION 0
+#define STATE_SEARCH_GOAL 2
+#define	STATE_SEARCH_BALL 1
+#define	STATE_CATCH_BALL 3
+#define STATE_FIND_GOAL 4
+#define STATE_AVOID_COLLISION 5
+#define STATE_KICK 6
+#define STATE_FIND_KICKWAY 7
+#define STATE_CENTER_GOAL 8
+int state;
+int prevState;
+int nearBall;
+int turnSpeed;
+int angle;
+int forwardSpeed;
+float fballDistanceX = 0.0;
+float fballDistanceY = 0.0;
+float fballAngleDeg = 0.0;
+
+int fturnCoef = 0;
+int goalForwardSpeed;
+
+int ballSearchDir;
+int searchTime;
+int ballSearchFlag;
+
+
+Config  & conf  = Config::getConfig();
+using namespace std;
+
+QTime ballSearchTimer;
+QTime kickTimer;
+
+Palmer2::Palmer2()
+{
+
+}
+
+
+Palmer2::~Palmer2()
+{
+}
+
+int Palmer2::getGoalColor (){
+    // switch 0 - YELLOW, 1 - BLUE
+
+        return digital[VILLAIN_GOAL_SWITCH] ? R_GOAL_YELLOW : R_GOAL_BLUE ;
+
+}
+
+void Palmer2::omni(float dirDeg, float velocityBody, int velocityMax, float velocityAngular, float battery) {
+        float velocityX, velocityY;
+        float velocityWheel[3];
+        float max = 0.0;
+        float scaleCoef;
+        float dirRad;
+        int pwm[3];
+        int pwmSum = 0;
+        int direction;
+        int i;
+
+        dirRad = dirDeg * 0.0174532925;	// degrees to radians
+
+        // Correcting speed according battery
+        direction = 1;
+        if (velocityBody < 0) direction = -1;
+        velocityBody = sqrt((velocityBody*velocityBody) * battery) * direction;
+
+        direction = 1;
+        if (velocityAngular < 0) direction = -1;
+        velocityAngular = sqrt((velocityAngular*velocityAngular) * battery) * direction;
+
+
+        velocityX = velocityBody * cos(dirRad);
+        velocityY = velocityBody * sin(dirRad);
+
+        //Vw[0] = round(cos(w1) * Vx + sin(w1) * Vy + L * Va);
+        //Vw[1] = round(cos(w2) * Vx + sin(w2) * Vy + L * Va);
+        //Vw[2] = round(cos(w3) * Vx + sin(w3) * Vy + L * Va);
+
+        // 150, 30, 270 (60, 300, 180)
+        velocityWheel[0] = -0.866025404 * velocityX + 0.5 * velocityY + velocityAngular;
+        velocityWheel[1] = 0.866025404 * velocityX + 0.5 * velocityY + velocityAngular;
+        velocityWheel[2] = -velocityY + velocityAngular;
+
+        // Voltage is not linearly proposional to power
+        max = 0.0;
+        for(i = 0; i < 3; i++) {
+                if (abs(velocityWheel[i]) > max) max = abs(velocityWheel[i]);
+        }
+
+        if (max > 0) {
+                for(i = 0; i < 3; i++) {
+                        direction = 1;
+                        if (velocityWheel[i] < 0) direction = -1;
+                        velocityWheel[i] = sqrt((max*max) * (abs(velocityWheel[i]) / max)) * direction;
+                }
+        }
+
+        // Scaling
+        max = 0.0;
+        for(i = 0; i < 3; i++) {
+                if (abs(velocityWheel[i]) > velocityMax) max = abs(velocityWheel[i]);
+        }
+
+        if (max > velocityMax) {
+                scaleCoef = velocityMax / max;
+                for(i = 0; i < 3; i++) {
+                        velocityWheel[i] = velocityWheel[i] * scaleCoef;
+                }
+        }
+
+        for(i = 0; i < 3; i++) {
+                pwm[i] = round(velocityWheel[i]);
+                pwmSum = pwmSum + pwm[i];
+        }
+
+        for(i = 0; i < 3; i++) {
+                // If not all wheels are stopped break wheels with 0 speed
+                if (pwm[i] == 0 && pwmSum != 0) {
+                        setDcMotor(i, 512);
+                } else {
+                        setDcMotor(i, pwm[i]);
+                }
+        }
+}
+
+void Palmer2::stop() {
+    setDcMotor(0, 512);
+    setDcMotor(1, 512);
+    setDcMotor(2, 512);
+}
+
+bool Palmer2::gotBall(){
+
+    //qDebug ("SENSOR VALUE  %d ",analog[BALL_SENSOR] > BALL_SENSOR_THRESHOLD);
+    std::cout << "SENSOR " << analog[BALL_SENSOR];
+    return analog[BALL_SENSOR] > BALL_SENSOR_THRESHOLD;
+
+}
+
+bool Palmer2::isThereBall (){
+    // kas on pall näha
+
+    return ballSize>0;
+}
+
+bool Palmer2::isMoveFree (){
+    if (analog[7]>FREE_WAY_TRESHOLD || analog[6]>FREE_WAY_TRESHOLD)
+        return FALSE;
+    else
+        return TRUE;
+}
+
+
+
+bool Palmer2::isGoalOn (){
+    //Check is Goal seen or not
+    //return FALSE;
+    return (&goal != NULL);
+}
+
+bool Palmer2::isAimed (){
+
+
+    int goalLeft, goalRight, goalCenter;
+    int center;
+    int offset;
+
+    offset = goal.rect.width / 20;
+
+    goalLeft = goal.rect.x + offset;
+    goalRight = goal.rect.x + goal.rect.width - offset;
+    goalCenter = goalLeft + (goal.rect.width / 2);
+    center = _img->width / 2;
+
+
+    std::cout << "goalLeft  " << goalLeft;
+    std::cout << "goalCenter  " << goalCenter;
+    std::cout << "goalRight  " << goalRight<<endl;
+        if (center > goalLeft && center < goalCenter) return 1;
+        if (center < goalRight && center > goalCenter) return 1;
+
+    return 0;
+
+
+
+}
+
+bool Palmer2::isKickWayFree(){
+    // Proverit liniju zabivanija
+    return TRUE;
+}
+
+bool Palmer2::isSolenoidFull(){
+    // zarjad kondesatorov cherez tajmer
+    return TRUE;
+}
+
+void Palmer2::stateChange(){
+    prevState = state;
+    if (gotBall()){
+
+        if (isMoveFree()){
+            if (isGoalOn()){
+                if (isAimed()){
+                    if (isKickWayFree()){
+
+                        if (isSolenoidFull())
+                            state=STATE_KICK;
+
+                       }
+
+                    else{
+                        state = STATE_FIND_KICKWAY;
+                        }
+                }else {
+                        state = STATE_CENTER_GOAL;
+                        }
+
+                }
+                else{
+                state = STATE_SEARCH_GOAL;
+            }
+
+
+        } else {
+            state = STATE_AVOID_COLLISION;
+        }
+
+    }else{
+        if (isThereBall()){
+            state=STATE_CATCH_BALL;
+        }else{
+            if (isMoveFree()){
+                state=STATE_SEARCH_BALL;
+                nearBall=0;
+            }else{
+                state=STATE_AVOID_COLLISION;
+            }
+
+
+        }
+    }
+
+
+}
+
+int Palmer2::calculateSpeed (){
+
+    return forwardSpeed > MAX_SPEED ? MAX_SPEED : forwardSpeed;
+}
+
+void Palmer2::drive (){
+    switch(state) {
+     //   case STATE_START_POSITION:
+     //       qDebug ("Start Position");
+     //       break;
+        case STATE_SEARCH_BALL:
+            searchBall();
+            break;
+        case STATE_SEARCH_GOAL:
+          nearBall = 0;
+          searchGoal();
+            break;
+        case STATE_CATCH_BALL:
+          catchBall();
+            break;
+        case STATE_CENTER_GOAL:
+            centerGoal();
+            break;
+        case STATE_AVOID_COLLISION:
+            avoidCollision();
+        case STATE_FIND_KICKWAY:
+            findKickWay();
+            break;
+        case STATE_KICK:
+            kick();
+            break;
+    }
+
+}
+
+void Palmer2::centerGoal(){
+    qDebug ("isAIMED return %d", isAimed());
+    if (&goal ==NULL)
+        omni (0,0,255, -130,1);
+    if (&goal !=NULL)
+        omni (0,0,255, -70,1);
+}
+
+void Palmer2::printImageInfo(Image::Object *kala) {
+    std::cout<<" DistanceH: "<<kala->distanceH;
+    std::cout<<" Width: "<<kala->rect.width;
+    std::cout<<" Height: "<<kala->rect.height;
+    std::cout<<" Area: "<<kala->area;
+    std::cout<<" BallSize: "<<ballSize;
+    std::cout<<" X: "<<kala->rect.x;
+    std::cout<<" Y: "<<kala->rect.y;
+    std::cout<<std::endl;
+}
+
+void Palmer2::printState (){
+
+    switch(state) {
+        case STATE_START_POSITION:
+            qDebug ("Start Position");
+            break;
+        case STATE_SEARCH_BALL:
+            qDebug ("Ball Searching");
+            break;
+        case STATE_SEARCH_GOAL:
+            qDebug ("Goal Searching");
+            break;
+        case STATE_CATCH_BALL:
+            qDebug ("Try to catch ball");
+            break;
+        case STATE_AVOID_COLLISION:
+            qDebug ("Avoiding collision");
+            break;
+        case STATE_FIND_KICKWAY:
+            qDebug ("Searching for kickway");
+            break;
+        case STATE_CENTER_GOAL:
+            qDebug ("Centering");
+            break;
+        case STATE_KICK:
+            qDebug ("Kick");
+            break;
+
+
+    }
+}
+void Palmer2::searchBall(){
+
+    qDebug("Function searchBall call");
+    if (!ballSearchFlag){
+        ballSearchFlag=1;
+
+    }
+
+    if ((ballSearchTimer.elapsed()-BALL_SEARCH_TIMER*1000)<0){
+        //std::cout << "SETTING FLAG "<< (ballSearchTimer.elapsed()-BALL_SEARCH_TIMER*1000)<< std::endl;
+
+        omni (0,0,255, BALL_SEARCH_SPEED*ballSearchDir,1);
+    }
+    else {
+        // TODO CHECK FIELD EDGE and MOVE IN CYCLE
+        ballSearchFlag=0;
+        ballSearchTimer.start();
+
+
+        omni (20,0,255, -BALL_SEARCH_SPEED*ballSearchDir,1);
+        //sleep(1000);
+    }
+    //omni (0,0,255, -BALL_SEARCH_SPEED,1);
+    if (nearBall && (ball.area == 0 || fballDistanceY > 20.0)){
+        grabBallInFront();
+        nearBall=0;
+    }
+    std::cout << "ballSearchFlag " << ballSearchFlag<<std::endl;
+    std::cout << "ballSearchTimer.elapsed() " << ballSearchTimer.elapsed()<<std::endl;
+
+
+    //stop();
+
+}
+
+void Palmer2::searchGoal(){
+
+    qDebug("Function searchGoal call");
+
+    int rotate;
+    int distanceH = goal.distanceH;
+    int dir = 1;
+    if(distanceH != 0) {
+        dir = -(distanceH/abs(distanceH));
+    }
+    goalForwardSpeed = 0;
+    if(distanceH !=0) {
+        if(abs(distanceH) < 320) {
+            goalForwardSpeed = 55;
+
+            if(goal.rect.height < 30) {
+                if(abs(distanceH) < 160) {
+                    rotate = (0.05 * abs(distanceH) + 5) * dir;
+                }
+            }
+
+            rotate=  (0.05 * abs(distanceH) + 15) * dir;
+        }
+    }
+    rotate= GOAL_SEARCH_SPEED;
+
+
+
+        omni (0,0,255, rotate,1);
+    //stop();
+
+}
+
+void Palmer2::catchBall(){
+    qDebug("Function catchBall call");
+
+    if (ballSize != 0) {
+        cvCircle(_img, ball.center, 3, CV_RGB(0, 0, 0), 5, CV_AA, 0);
+
+        ball.center.y += conf.getTopCut(); // Adding ROI y min
+        fballDistanceY = 4276.454305*pow(ball.rect.y, -1.017810471);
+        if (ball.rect.y<109 && ball.rect.y > 35)
+            fballDistanceY += fballDistanceY + 4.5;
+        // b = tan(30 deg) * ballDistance
+        float ftemp = 0.577350269 * fballDistanceY;
+
+        fballDistanceX = (ball.distanceH / 320.0) * ftemp;
+
+        fballAngleDeg = atan(fballDistanceX / fballDistanceY) * 180 / M_PI;
+
+
+
+
+          if (ball.rect.y < 156) nearBall = 1;
+
+            fturnCoef = sqrt(35.0 - fballDistanceY);
+            if (fturnCoef < 0) fturnCoef = 0;
+
+
+            turnSpeed = sqrt(pow(45.0, 2.0) * (fabs(fballAngleDeg) / 30.0)) + fturnCoef;
+
+
+            if (fballAngleDeg < 0) turnSpeed = -turnSpeed;
+
+            angle = 0;
+
+
+              forwardSpeed = 250;
+              if (fballDistanceY < 200.0) forwardSpeed = 230;
+              if (fballDistanceY < 75.0) forwardSpeed = 170;
+              if (fballDistanceY < 30.0) forwardSpeed = 140;
+              if (fballDistanceY < 25.0) forwardSpeed = 130;
+              if (fballDistanceY < 20.0) forwardSpeed = 120;
+
+          /* turnSpeed = 0.1f * abs(ball.distanceH) + 20; //+47
+
+           if (ball.distanceH >= 30) {
+               omni(0, forwardSpeed, 255, turnSpeed, 1);
+           } else if(ball.distanceH  <= -30) {
+               omni(0, forwardSpeed, 255, -turnSpeed, 1);
+           } else*/
+              turnSpeed = turnSpeed*1.1;
+              omni(0, forwardSpeed+8, 255, turnSpeed, 1);
+
+
+           //omni(angle, forwardSpeed, 170, turnSpeed,1);
+           std::cout << "Kiirus" << forwardSpeed << std::endl;
+           std::cout << "Turnspeed" << turnSpeed << std::endl;
+           std::cout << "Distance  " << fballDistanceY << std::endl;
+    //omni(0, calculateSpeed(), 150, calculateRotation(),1);
+        }
+
+
+}
+
+int Palmer2::calculateRotation (){
+
+    int spd = 0;
+    int distanceH = ball.distanceH;
+
+    if(distanceH != 0) {
+        if (ballSize < 170) {
+//             spd = 1.0956699469 * pow(abs(distanceH), 0.6065465143);
+            spd = 1.05334966 * pow(abs(distanceH), 0.6422576078);
+            spd = spd > 40 ? 40 : spd;
+        } else if (ballSize > 70) {
+//             spd = 1.3973530171 * pow(abs(distanceH), 0.5808808105);
+            spd = 1.1030219792 * pow(abs(distanceH), 0.6721912621);
+        }
+    }
+    spd = spd * -(distanceH/abs(distanceH));
+    spd = spd > MAX_TURN_SPEED ? MAX_TURN_SPEED : spd;
+    spd = spd < -MAX_TURN_SPEED ? -MAX_TURN_SPEED : spd;
+    return spd;
+}
+
+
+void Palmer2::avoidCollision(){
+
+    qDebug("Function avoidCollision call");
+    omni (0,0,255,50,1);
+
+}
+
+void Palmer2::findKickWay(){
+
+    qDebug("Function findKickWay call");
+
+}
+
+void Palmer2::kick(){
+
+    qDebug("Function kick WHERE IS KICK");
+    if ((kickTimer.elapsed()-1000)<0){
+
+    } else {
+        kickTimer.start();
+        setDigital(0);
+        sleep(20);
+        clearDigital(0);
+}
+
+}
+
+// switch 0 - YELLOW, 1 - BLUE
+int Palmer2::getVillainGoal() {
+    return R_GOAL_BLUE;
+    //return digital[VILLAIN_GOAL_SWITCH] ? GOAL_YELLOW : GOAL_BLUE ;
+}
+
+int Palmer2::getOwnGoal() {
+    return digital[VILLAIN_GOAL_SWITCH] ? GOAL_BLUE : GOAL_YELLOW ;
+}
+
+void Palmer2::processFrame() {
+
+    _img = image->getFrame();
+    image->process(0,0,0,0);
+
+    /*if (image->found_objects != NULL) {
+      for (int i = 0; i < image->found_objects->total; i++) {
+
+        Image::Object* obj =  (Image::Object* ) cvGetSeqElem( (image->found_objects), i );
+
+         if(obj!=0){
+           std::cout<<((obj->type))<<std::endl;
+           std::cout<<((obj->distanceH))<<std::endl;
+           std::cout<<((obj->area))<<std::endl;
+         }
+
+      }
+    }*/
+
+    ballSize = 0;
+
+    ball.area = 0;
+    ball.rect.y = 0;
+    ball.rect.width = 0;
+    ball.rect.height = 0;
+    ball.distanceH = 0;
+    goal.area = 0;
+    goal.distanceH = 999;
+    ownGoal.area = 0;
+    ownGoal.distanceH = 999;
+
+    clearToShoot = TRUE;
+
+    Image::Object * obj;
+
+    if (image->found_objects != NULL) {
+
+        // Find biggest goal
+        for (int i = 0; i < image->found_objects->total; i++) {
+            obj = (Image::Object* ) cvGetSeqElem((image->found_objects), i);
+
+            if (obj->type == getVillainGoal()) {
+                if (obj->area > goal.area) {
+                    goal = *obj;
+
+
+                }
+            }
+            else if (obj->type == getOwnGoal()) {
+                if (obj->area > ownGoal.area) {
+                    ownGoal = *obj;
+                    std::cout << "VÄRAVAT SAADETUD!!!!";
+                }
+            }
+        }
+
+        for (int i = 0; i < image->found_objects->total; i++) {
+            obj = (Image::Object* ) cvGetSeqElem((image->found_objects), i);
+
+
+            // Find closest ball
+            if (obj->type == BALL) {
+                if (obj->rect.y > ball.rect.y) {
+                    // TODO: ball that is 100% inside goal is wrong
+                    if(
+                        (goal.area != 0 &&
+                            (
+                                ((goal.rect.y + goal.rect.height) < (obj->rect.y + obj->rect.height)*1.05)
+                                    ||
+                                (
+                                    ((goal.rect.x + goal.rect.width) < (obj->rect.x + obj->rect.width))
+                                    ||
+                                    (goal.rect.x > obj->rect.x)
+                                )
+                            )
+                        )
+                        || goal.area == 0)
+                    {
+                        ball = *obj;
+                    }
+
+                    if(ball.rect.height > 25 && ball.distanceH != 0) {
+                        lastBallDirection = -ball.distanceH/abs(ball.distanceH);
+                    }
+
+                    if((abs(ball.distanceH) - ball.rect.width ) < CLEAR_TO_SHOOT_THRESHOLD
+                        && ball.distanceH != 0) {
+                        clearToShoot = FALSE;
+                        shootAdjustDir = -ball.distanceH/abs(ball.distanceH);
+                    }
+                }
+            }
+        }
+        ballSize = (ball.rect.width > ball.rect.height) ? ball.rect.width : ball.rect.height;
+        // Jätame meelde kui otsime väravat kus me näeme palli, et pärast teada kuhu pöörduda
+        if (state!=STATE_SEARCH_BALL)
+            if (ball.distanceH>0)
+                ballSearchDir=1;
+            else
+                ballSearchDir=-1;
+    }
+    std::cout << "ballSearchDir" << ballSearchDir<< std::endl;
+    view->show(_img);
+
+
+}
+
+void Palmer2::sleep(long t)
+{
+    usleep(t * 1000);
+}
+
+void Palmer2::grabBallInFront() {
+    std::cout << "GRABBING INFRONT";
+    omni(0, 180, 255,0,1);
+    sleep(600);
+    processFrame();
+}
+
+
+void Palmer2::go()
+    {
+        //Image::Object ball;
+        //Image::Object goal;
+        //Image::Object * obj;
+
+
+
+        char str[50];
+
+
+        int clearToKick = 0;
+
+        int ballTotal = 0;
+
+
+        QTime t;
+      struct timeval a,b;
+
+      ballSearchTimer.start();
+      kickTimer.start();
+      ballSearchFlag=0;
+      ballSearchDir =-1;
+     qDebug("Palmer2 Start...\n");
+
+
+
+    // SendThread *sendImage = new SendThread();
+    // Server *server = new Server();
+    // server->setAnalogs(analog);
+    // server->setDigitals(digital);
+
+     conf.setSendCmdEnabled(1);
+
+     while (0){
+         omni (0,100,255,0,1);
+         if (analog[3]>FLOOR_SENSOR_TRESHOLD){
+             stop();
+             sleep (2);
+         }
+     }
+
+     while(0){
+       gettimeofday(&a,NULL);
+
+       getAnalog(0);
+    //    getAnalog(0);
+    //    getAnalog(0);
+    //    getAnalog(0);
+    //    getAnalog(0);
+    //    getAnalog(0);
+       gettimeofday(&b,NULL);
+       std::cout<<"Töötlus "<<(b.tv_usec-a.tv_usec)<<std::endl;
+     }
+
+     // Mitme seriali test
+     while(0){
+        gettimeofday(&a, NULL);
+
+        std::cout<<"--------------------"<<std::endl;
+        std::cout<<"Analoog 0:0 - "<<getAnalog(0, 0)<<std::endl;
+        std::cout<<"Analoog 0:1 - "<<getAnalog(0, 1)<<std::endl;
+
+        gettimeofday(&b, NULL);
+        std::cout<<"Time: "<<b.tv_usec-a.tv_usec<<std::endl;
+     }
+
+     // Seriali kiiruse test
+     // Loeb korraga kõiki esimese (0-nda) seriali analooge
+     while(0){
+       gettimeofday(&a, NULL);
+       getAnalogs();
+
+       std::cout<<"Values"<<std::endl;
+       std::cout<<analog[0]<<std::endl;
+       std::cout<<analog[1]<<std::endl;
+       std::cout<<analog[2]<<std::endl;
+       std::cout<<analog[3]<<std::endl;
+       std::cout<<analog[4]<<std::endl;
+       std::cout<<analog[5]<<std::endl;
+       std::cout<<analog[6]<<std::endl;
+       std::cout<<analog[7]<<std::endl;
+
+       gettimeofday(&b, NULL);
+       std::cout<<"Time: "<<b.tv_usec-a.tv_usec<<std::endl;
+       sleep(1);
+     }
+    //sendImage->start();
+
+     while(1){
+        QTime timer1;
+            conf.setSendCmdEnabled(0);
+
+        //requestSensors();
+        processFrame();
+        //getSensorsResponse();
+        //printImageInfo (&ball);
+        stateChange();
+        printState();
+        drive();
+
+        cvWaitKey(2);
+        if(image->fps < 1){
+             image->reOpen();
+             qDebug("FPS is too slow...reopening Camera!!!");
+         }
+
+
+
+         }
+
+}
+
